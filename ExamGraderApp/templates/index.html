@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="th">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ExamGrade Pro - Setup</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; margin: 0; background-color: #f4f7f9; }
+        .main-container { padding: 2rem; max-width: 1200px; margin: auto; }
+        .panel { background-color: #fff; border-radius: 8px; padding: 2rem; border: 1px solid #dee2e6; margin-bottom: 2rem; }
+        .panel h2 { margin-top: 0; border-bottom: 2px solid #007bff; padding-bottom: 0.5rem; }
+        .flex-container { display: flex; gap: 2rem; }
+        .flex-container > div { flex: 1; }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; margin-bottom: .5rem; font-weight: 500; }
+        input[type="text"], input[type="file"], input[type="number"], textarea { width: 100%; padding: .75rem; border: 1px solid #dee2e6; border-radius: 4px; box-sizing: border-box; }
+        textarea { min-height: 300px; }
+        .example-box { background-color: #e9ecef; border-radius: 4px; padding: 1rem; font-family: monospace; white-space: pre-wrap; font-size: 0.9em; height: 300px; overflow-y: auto;}
+        .submit-btn { width: 100%; padding: 1rem; background-color: #28a745; color: #fff; border: none; border-radius: 4px; font-size: 1.2rem; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <main class="main-container">
+        <h1>ExamGrade Pro - Batch Grading Platform</h1>
+        <form method="post" action="/preprocess_and_setup" enctype="multipart/form-data">
+            <div class="panel">
+                <h2>1. ข้อมูลการตรวจ</h2>
+                <div class="flex-container">
+                    <div class="form-group">
+                        <label for="session_name">ชื่อการตรวจ (เช่น Midterm 2024)</label>
+                        <input type="text" id="session_name" name="session_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="subject">ชื่อวิชา (เช่น Operating System)</label>
+                        <input type="text" id="subject" name="subject" required>
+                    </div>
+                </div>
+            </div>
+            <div class="panel flex-container">
+                <div>
+                    <h2>2. โครงสร้างข้อสอบ</h2>
+                    <div class="form-group">
+                        <label for="exam_structure">อธิบายโครงสร้าง, เกณฑ์, และเฉลยของแต่ละส่วน</label>
+                        <textarea id="exam_structure" name="exam_structure" required></textarea>
+                    </div>
+                </div>
+                <div>
+                    <h2>ตัวอย่าง</h2>
+                    <div class="example-box"><strong>-- สำหรับข้อสอบอัตนัย (AI ทำเฉลยเอง) --</strong>
+Part 1: Linear Combination (7 Points)
+Question: Given p1(x), p2(x), p3(x), can p(x) be written as a linear combination? Use Gauss Elimination.
+Rubric: Correct setup (2pts), Correct Gauss Elimination (3pts), Correct conclusion (2pts)
+
+<hr style="margin: 1rem 0;">
+
+<strong>-- สำหรับข้อสอบปรนัย (มีเฉลยให้) --</strong>
+Part 2: Multiple Choice (20 Points)
+Key: 1.A, 2.D, 3.C ...</div>
+                </div>
+            </div>
+            <div class="panel">
+                <h2>3. ไฟล์ Input</h2>
+                <div class="flex-container">
+                    <div class="form-group">
+                        <label for="roster_file">อัปโหลดไฟล์รายชื่อนักเรียน (.csv)</label>
+                        <input type="file" id="roster_file" name="roster_file" accept=".csv" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="batch_file">อัปโหลดไฟล์คำตอบ (PDF รวม)</label>
+                        <input type="file" id="batch_file" name="batch_file" accept=".pdf" required>
+                    </div>
+                     <div class="form-group">
+                        <label for="pages_per_student">จำนวนหน้า/คน</label>
+                        <input type="number" id="pages_per_student" name="pages_per_student" min="1" value="1" required>
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="submit-btn">สร้างเซสชั่นและระบุตัวตนนักเรียน</button>
+        </form>
+    </main>
+</body>
+</html>

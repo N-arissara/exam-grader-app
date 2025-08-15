@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="th">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard - {{ session_data.session_name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; margin: 0; background-color: #f4f7f9; }
+        .main-container { padding: 2rem; max-width: 1200px; margin: auto; }
+        .panel { background-color: #fff; border-radius: 8px; padding: 2rem; border: 1px solid #dee2e6; margin-bottom: 2rem; }
+        .panel h2 { margin-top: 0; border-bottom: 2px solid #007bff; padding-bottom: 0.5rem; }
+        .session-info { background-color: #e9ecef; padding: 1rem; border-radius: 8px; margin-bottom: 2rem; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #dee2e6; padding: 0.8rem; text-align: left; }
+        th { background-color: #f8f9fa; }
+        .grade-btn { padding: 0.5rem 1rem; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .verify-link { color: #28a745; text-decoration: none; font-weight: bold; }
+        .status-graded { color: green; }
+        .status-pending { color: orange; }
+    </style>
+</head>
+<body>
+    <main class="main-container">
+        <div class="session-info">
+            <h1>Dashboard: {{ session_data.session_name }}</h1>
+            <p><strong>วิชา:</strong> {{ session_data.subject }}</p>
+            <p>AI ระบุตัวตนนักเรียนได้ {{ session_data.students|length }} คน จากไฟล์ที่อัปโหลด</p>
+        </div>
+        <div class="panel">
+            <h2>ขั้นตอนการตรวจ (Horizontal Grading)</h2>
+            <table>
+                <thead>
+                    <tr><th>ส่วนของข้อสอบ</th><th>สถานะ</th><th>ดำเนินการ</th></tr>
+                </thead>
+                <tbody>
+                    {% for part in session_data.parts %}
+                    <tr>
+                        <td>{{ part }}</td>
+                        <td class="{{ 'status-graded' if part in (session_data.students[0].scores if session_data.students else {}) else 'status-pending' }}">
+                            {{ 'ตรวจแล้ว' if part in (session_data.students[0].scores if session_data.students else {}) else 'ยังไม่ได้ตรวจ' }}
+                        </td>
+                        <td>
+                            {% if part in (session_data.students[0].scores if session_data.students else {}) %}
+                                <a href="{{ url_for('verify_part', session_id=session_data.session_id, part_to_verify=part) }}" class="verify-link">ตรวจสอบคะแนน</a>
+                            {% else %}
+                                <form method="post" action="/batch_grade_part" style="display:inline;">
+                                    <input type="hidden" name="session_id" value="{{ session_data.session_id }}">
+                                    <input type="hidden" name="part_to_grade" value="{{ part }}">
+                                    <button type="submit" class="grade-btn">เริ่มตรวจส่วนนี้</button>
+                                </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="panel">
+          <h2>4. สรุปและส่งออกผลลัพธ์</h2>
+          <p>หลังจากตรวจและตรวจสอบคะแนนทุกส่วนครบถ้วนแล้ว คุณสามารถส่งออกผลลัพธ์เป็นไฟล์ .csv เพื่อนำไปใช้งานต่อได้</p>
+          <a href="{{ url_for('export_csv', session_id=session_data.session_id) }}" style="display: inline-block; padding: 1rem 2rem; background-color: #17a2b8; color: white; text-decoration: none; border-radius: 5px; font-size: 1.1rem;">
+              🚀 ส่งออกคะแนนทั้งหมดเป็น CSV
+          </a>
+        </div>
+
+        <div class="panel">
+            <h2>รายชื่อนักเรียนที่ระบุตัวตนได้</h2>
+            <table>
+                <thead><tr><th>รหัสนักศึกษา (จาก AI)</th><th>ชื่อ (จาก AI)</th></tr></thead>
+                <tbody>
+                    {% for student in session_data.students %}
+                    <tr><td>{{ student.id }}</td><td>{{ student.name }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+</body>
+</html>

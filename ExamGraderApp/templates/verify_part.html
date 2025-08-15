@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="th">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Verify - {{ part_to_verify }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; margin: 0; background-color: #f4f7f9; }
+        .main-container { padding: 2rem; max-width: 1200px; margin: auto; }
+        .panel { background-color: #fff; border-radius: 8px; padding: 2rem; border: 1px solid #dee2e6; margin-bottom: 2rem; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid #dee2e6; padding: 0.8rem; text-align: left; }
+        th { background-color: #f8f9fa; }
+        .score-input { width: 80px; text-align: center; }
+        .confirm-btn { margin-top: 1rem; padding: 0.8rem 1.5rem; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; float: right; }
+        .back-link { color: #007bff; text-decoration: none; font-weight: bold; }
+        .details-link { font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <main class="main-container">
+        <h1>ตรวจสอบคะแนน: {{ part_to_verify }}</h1>
+        <p><a href="{{ url_for('dashboard', session_id=session_id) }}" class="back-link">&laquo; กลับไปที่ Dashboard</a></p>
+        <div class="panel">
+            <form method="post" action="/save_scores">
+                <input type="hidden" name="session_id" value="{{ session_id }}">
+                <input type="hidden" name="part_graded" value="{{ part_to_verify }}">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>รหัสนักศึกษา</th>
+                            <th>ชื่อ</th>
+                            <th>คะแนนที่ AI ให้</th>
+                            <th>แก้ไขคะแนน</th>
+                            <th>ตรวจสอบ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td>{{ student.id }}</td>
+                            <td>{{ student.name }}</td>
+                            <td>{{ student.scores[part_to_verify].score }} / {{ student.scores[part_to_verify].total_score }}</td>
+                            <td><input type="number" name="score_{{ student.id }}" class="score-input" value="{{ student.scores[part_to_verify].score }}"></td>
+                            <td><a href="{{ url_for('verify_student', session_id=session_id, student_id=student.id, part_to_verify=part_to_verify) }}" class="details-link">ดูรายละเอียด</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <button type="submit" class="confirm-btn">ยืนยันและบันทึกคะแนนส่วนนี้</button>
+            </form>
+        </div>
+    </main>
+</body>
+</html>

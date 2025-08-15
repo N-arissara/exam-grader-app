@@ -1,0 +1,109 @@
+import google.generativeai as genai
+import io
+import json
+import base64
+import fitz  # PyMuPDF
+from PIL import Image
+
+# --- ส่วนที่ 1: ฟังก์ชันระบุตัวตนนักเรียน ---
+def split_pdf_and_identify_students(pdf_file_storage, pages_per_student, roster_df, api_key):
+    """แยกไฟล์ PDF, ใช้ AI ดึงข้อมูล, และจับคู่กับรายชื่อใน Roster"""
+    genai.configure(api_key=api_key)
+    students_data = []
+    pdf_file_storage.stream.seek(0)
+    pdf_bytes = pdf_file_storage.read()
+    main_doc = fitz.open(stream=pdf_bytes, filetype="pdf")
+    
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    roster_list_str = roster_df.to_string()
+    
+    for i in range(0, main_doc.page_count, pages_per_student):
+        # ( ... โค้ดส่วนนี้เหมือนเดิมทั้งหมด ... )
+        first_page_of_chunk = main_doc.load_page(i)
+        pix = first_page_of_chunk.get_pixmap(dpi=150)
+        img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+        
+        identification_prompt = f"""
+        **MISSION:** You are an AI assistant specializing in student identification from scanned exam papers. Your task is to accurately identify a student by matching OCR data from an image against a provided class roster.
+        **CONTEXT:** The image is the first page of a student's answer sheet. The handwriting can be messy. The provided class roster is the ground truth.
+        **YOUR TASK (Chain of Thought):**
+        1.  **OCR:** Find any text that looks like a student's name or ID number.
+        2.  **Match:** Compare the found text with the names and IDs in the "Class Roster" below. Find the **single best match**.
+        3.  **Output:** Return the **exact student_id and student_name from the roster data** for the best match in a single, valid JSON object.
+        **REQUIRED JSON OUTPUT FORMAT:** ```json{{"student_id": "66010001", "student_name": "Somchai Jaidee"}}```
+        ---
+        **Class Roster:**
+        {roster_list_str}
+        ---
+        **Image to Analyze:**
+        """
+        
+        student_id = f"student_{i//pages_per_student + 1}"
+        student_name = "Unknown"
+        
+        try:
+            response = model.generate_content([identification_prompt, img])
+            cleaned_response = response.text.strip().replace('```json', '').replace('```', '')
+            identity = json.loads(cleaned_response)
+            student_id = identity.get("student_id", student_id)
+            student_name = identity.get("student_name", student_name)
+        except Exception as e:
+            print(f"Could not identify student on page {i}: {e}")
+
+        student_pages_images = []
+        for page_num in range(i, min(i + pages_per_student, main_doc.page_count)):
+            page = main_doc.load_page(page_num)
+            pix = page.get_pixmap(dpi=150)
+            img_obj = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            buffered = io.BytesIO()
+            img_obj.save(buffered, format="PNG")
+            img_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
+            student_pages_images.append(img_str)
+            
+        students_data.append({
+            "id": student_id, "name": student_name,
+            "images_b64": student_pages_images, "scores": {}
+        })
+        
+    main_doc.close()
+    return students_data
+
+# --- ส่วนที่ 2: ฟังก์ชันตรวจข้อสอบ ---
+def grade_batch_for_one_part(students_data, exam_structure, part_to_grade, subject, api_key):
+    """ตรวจข้อสอบส่วนเดียวสำหรับนักเรียนทุกคน"""
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    
+    for student in students_data:
+        # ( ... โค้ดส่วนนี้เหมือนเดิมทั้งหมด ... )
+        student_images = [Image.open(io.BytesIO(base64.b64decode(b64_str))) for b64_str in student["images_b64"]]
+        
+        prompt_template = f"""
+        **MISSION:** You are an expert University Professor for the subject: **{subject}**. Your task is to grade a student's answer for one specific part of an exam.
+        **CONTEXT:** You will grade ONLY the part named: "{part_to_grade}".
+        **YOUR TASK (Solve-then-Grade Chain of Thought):**
+        1.  **Analyze the Question & Generate a Solution:** First, solve the problem yourself based on the exam structure.
+        2.  **Analyze Student's Work:** Examine the student's answer in the provided images.
+        3.  **Compare and Grade:** Compare the student's work against your solution and the rubric.
+        4.  **Provide Feedback & Output JSON:** Write clear, constructive feedback and return a single, valid JSON object with score, total_score, and feedback.
+        **REQUIRED JSON OUTPUT FORMAT:** ```json{{"score": <number>, "total_score": <number>, "feedback": "<string>"}}```
+        ---
+        **FULL EXAM STRUCTURE:**
+        ```text
+        {exam_structure}
+        ```
+        ---
+        **STUDENT'S ANSWER IMAGES:**
+        """
+        
+        prompt_parts = [prompt_template] + student_images
+        
+        try:
+            response = model.generate_content(prompt_parts)
+            cleaned_response = response.text.strip().replace('```json', '').replace('```', '')
+            result = json.loads(cleaned_response)
+            student["scores"][part_to_grade] = result
+        except Exception as e:
+            student["scores"][part_to_grade] = {"error": str(e), "score": 0, "total_score": 0}
+            
+    return students_data
