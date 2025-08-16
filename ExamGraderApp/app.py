@@ -12,6 +12,7 @@ from helpers import split_pdf_and_identify_students, grade_batch_for_one_part
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', 'YOUR_GEMINI_API_KEY') 
 
 app = Flask(__name__)
+os.makedirs("temp_uploads", exist_ok=True) 
 app.config['SESSIONS'] = {}  # ใช้เก็บข้อมูลเซสชั่นชั่วคราว
 
 def extract_parts_from_structure(structure):
